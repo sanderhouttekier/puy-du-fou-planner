@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Puy du Fou Planner — 3 Day Visit</title>
+<style>
+  :root{
+    --red:#7a1121; --red-dark:#5a0c18; --cream:#faf3e8; --ink:#241a15;
+    --ok:#2f7a3d; --warn:#b23b2e; --grey:#8a7d70; --line:#e3d8c8; --nav-h:64px;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Georgia, 'Times New Roman', serif; background:var(--cream); color:var(--ink); margin:0; padding:0;}
+  header{background:linear-gradient(135deg,var(--red),var(--red-dark)); color:#fff; padding:22px 28px;}
+  header h1{margin:0 0 4px 0; font-size:1.5rem;}
+  header .sub{opacity:.9; font-size:.92rem;}
+  .layout{display:flex; gap:0; align-items:flex-start;}
+  .main{flex:1 1 620px; padding:20px 24px; min-width:0;}
+  .side{flex:0 0 340px; position:sticky; top:var(--nav-h); max-height:calc(100vh - var(--nav-h)); overflow-y:auto; padding:20px 20px; background:#fff; border-left:2px solid var(--line);}
+
+  /* sticky top navigation: day tabs + settings flyout toggle */
+  .sticky-nav{position:sticky; top:0; z-index:30; background:var(--cream); padding:12px 28px; border-bottom:2px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; min-height:var(--nav-h);}
+  .day-tabs{display:flex; gap:8px; flex-wrap:wrap;}
+  .day-tab{font-family:Arial,sans-serif; font-size:.88rem; padding:9px 16px; border-radius:9px 9px 0 0; border:1px solid var(--line); border-bottom:none; background:#fff; cursor:pointer; color:var(--ink);}
+  .day-tab.active{background:var(--red); color:#fff; border-color:var(--red); font-weight:bold;}
+  .day-tab.unavailable{color:var(--grey); cursor:not-allowed; background:#f1ede6;}
+  .day-tab .lock-dot{margin-left:6px;}
+
+  .nav-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .settings-toggle{font-family:Arial,sans-serif; font-size:.85rem; white-space:nowrap; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:7px; padding:8px 14px;}
+  .settings-toggle:hover{background:var(--cream);}
+  .settings-toggle.open{background:var(--red); color:#fff; border-color:var(--red);}
+  .preview-toggle{display:none;} /* mobile-only: shown via the media query below */
+  .side-head{display:flex; align-items:center; justify-content:space-between;}
+  .preview-close{display:none; background:none; border:none; font-size:1.3rem; line-height:1; cursor:pointer; color:var(--grey); padding:0 4px;}
+
+  .settings-backdrop{position:fixed; inset:0; background:rgba(36,26,21,.3); z-index:40; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+  .settings-backdrop.open{opacity:1; pointer-events:auto;}
+
+  .settings-panel{position:fixed; top:0; right:0; height:100vh; width:320px; max-width:88vw; background:#fff; box-shadow:-6px 0 20px rgba(36,26,21,.2); z-index:50; padding:20px; overflow-y:auto; transform:translateX(100%); transition:transform .28s ease;}
+  .settings-panel.open{transform:translateX(0);}
+  .settings-panel-head{display:flex; align-items:center; justify-content:space-between; font-family:Arial,sans-serif; font-weight:bold; color:var(--red); font-size:1.05rem; margin-bottom:16px; padding-bottom:10px; border-bottom:2px solid var(--line);}
+  .settings-close{background:none; border:none; font-size:1.3rem; line-height:1; cursor:pointer; color:var(--grey); padding:0 4px;}
+  .settings-close:hover{color:var(--ink);}
+
+  .toolbar{display:flex; flex-direction:column; align-items:stretch; gap:14px;}
+  .toolbar label{font-size:.85rem; color:var(--grey);}
+  .toolbar input[type=number]{width:60px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; font-family:inherit;}
+  .toolbar button{font-family:inherit; cursor:pointer; border:none; border-radius:7px; padding:10px 14px; font-size:.85rem; width:100%;}
+  .toolbar .buffer-input{width:100%; justify-content:space-between; flex-wrap:wrap;}
+  .btn-primary{background:var(--red); color:#fff;}
+  .btn-primary:hover{background:var(--red-dark);}
+  .btn-ghost{background:transparent; border:1px solid var(--line) !important; color:var(--ink);}
+  .btn-ghost:hover{background:var(--cream);}
+  h2.group{font-size:1rem; text-transform:uppercase; letter-spacing:.06em; color:var(--red); border-bottom:2px solid var(--line); padding-bottom:6px; margin:26px 0 12px;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 16px; margin-bottom:10px;}
+  .card-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .card-head .name{font-weight:bold; font-size:1.02rem;}
+  .badge{display:inline-block; font-size:.72rem; padding:2px 8px; border-radius:20px; margin-left:8px; font-family:Arial,sans-serif;}
+  .badge-seen{background:#e6efe7; color:var(--ok); border:1px solid #b9d6bd;}
+  .badge-seen.unlocked{background:#f1e8da; color:#7a5b1e; border:1px solid #e0cda3;}
+  .badge-exp{background:#f1e8da; color:#7a5b1e; border:1px solid #e0cda3;}
+  .buffer-input{font-size:.75rem; color:var(--grey); display:flex; align-items:center; gap:4px; font-family:Arial,sans-serif;}
+  .buffer-input input{width:46px; padding:2px 4px; border:1px solid var(--line); border-radius:5px;}
+  .slots{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .slot{font-family:Arial,sans-serif; font-size:.85rem; border:1.5px solid var(--red); color:var(--red); background:#fff; padding:6px 12px; border-radius:20px; cursor:pointer;}
+  .slot:hover{background:#fbeceb;}
+  .slot.selected{background:var(--red); color:#fff;}
+  .slot.conflict{background:var(--warn); border-color:var(--warn); color:#fff;}
+  .slot.unavailable:not(.selected), .slot:disabled:not(.selected){background:#f1ede6; border-color:var(--line); color:#b8ab9b; cursor:not-allowed; text-decoration:line-through;}
+  .slot.unavailable:hover:not(.selected), .slot:disabled:hover:not(.selected){background:#f1ede6;}
+  .slot.selected:disabled{cursor:default; opacity:1;}
+  .card.conflict{border-color:var(--warn); box-shadow:0 0 0 1px var(--warn) inset;}
+  .exp-window{font-family:Arial,sans-serif; font-size:.85rem; color:var(--ink); background:#faf6ee; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .exp-window input[type=time]{padding:3px 5px; border:1px solid var(--line); border-radius:5px; font-family:inherit;}
+  .exp-window button{font-family:Arial,sans-serif;}
+  .note{font-size:.8rem; color:var(--grey); font-family:Arial,sans-serif; margin-top:4px;}
+  .timeline{font-family:Arial,sans-serif;}
+  .side h2{font-size:1.05rem; margin-top:0; color:var(--red);}
+  .agenda-legend{display:flex; gap:14px; font-size:.7rem; color:var(--grey); margin-bottom:10px; flex-wrap:wrap;}
+  .agenda-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .agenda-legend i{width:10px; height:10px; border-radius:2px; display:inline-block;}
+  .agenda-wrap{position:relative; margin-left:46px; border-left:1px solid var(--line);}
+  .agenda-hour-label{position:absolute; left:-46px; width:40px; text-align:right; font-size:.68rem; color:var(--grey); transform:translateY(-7px);}
+  .agenda-hour-rule{position:absolute; left:0; right:0; height:0; border-top:1px solid var(--line);}
+  .agenda-gap-label{position:absolute; left:8px; right:0; font-size:.68rem; color:var(--grey); font-style:italic; display:flex; align-items:center;}
+  .agenda-block{position:absolute; left:6px; right:6px; border-radius:4px; padding:1px 7px; box-sizing:border-box; overflow:visible; white-space:nowrap; line-height:1.3; font-size:.72rem; z-index:2;}
+  .agenda-block .agenda-time{font-size:.66rem; opacity:.85; display:block;}
+  .agenda-block.buffer{background:#f4e3c1; border:1px solid #ddb877; color:#7a5b1e; z-index:1;}
+  .agenda-block.show{background:var(--red); border:1px solid var(--red-dark); color:#fff; font-weight:bold;}
+  .agenda-block.experience{background:#2f5f78; border:1px solid #234a5e; color:#fff; font-weight:bold;}
+  .agenda-block.conflict{outline:2px solid var(--warn); outline-offset:1px;}
+  .warn-banner{background:#fdecea; border:1px solid var(--warn); color:var(--warn); font-family:Arial,sans-serif; font-size:.82rem; padding:8px 10px; border-radius:8px; margin-bottom:10px;}
+  .empty{font-family:Arial,sans-serif; font-size:.85rem; color:var(--grey); padding:10px 0;}
+  .locked-banner{background:#eaf4ec; border:1px solid var(--ok); color:var(--ok); font-family:Arial,sans-serif; font-size:.85rem; padding:10px 12px; border-radius:8px; margin-bottom:14px;}
+  .not-available{font-family:Arial,sans-serif; background:#fff; border:1px dashed var(--line); border-radius:10px; padding:24px; color:var(--grey); font-size:.9rem; text-align:center;}
+  .overview{font-family:Arial,sans-serif; font-size:.8rem; margin-top:22px; border-top:1px solid var(--line); padding-top:12px;}
+  .overview .day-row{display:flex; justify-content:space-between; padding:4px 0; color:var(--ink);}
+  .overview .day-row.active{font-weight:bold;}
+  #importFile{display:none;}
+  footer{font-family:Arial,sans-serif; font-size:.75rem; color:var(--grey); padding:20px 24px 40px;}
+
+  /* mobile: the "Your Day" preview becomes a toggleable slide-up sheet instead of a
+     fixed side column, so picking shows isn't fighting the preview for screen space */
+  @media (max-width: 900px){
+    .layout{display:block;}
+    .main{padding:16px;}
+    .preview-toggle{display:inline-block;}
+    .preview-close{display:inline-block;}
+    .side{
+      position:fixed; top:auto; bottom:0; left:0; right:0;
+      width:auto; max-height:82vh; height:82vh;
+      border-left:none; border-top:2px solid var(--line);
+      border-radius:16px 16px 0 0;
+      box-shadow:0 -8px 24px rgba(36,26,21,.25);
+      z-index:45;
+      transform:translateY(100%);
+      transition:transform .3s ease;
+    }
+    .side.open{transform:translateY(0);}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Puy du Fou — 3 Day Visit Planner</h1>
+  <div class="sub">One plan across all three days &nbsp;·&nbsp; exact times pulled from the official schedule's own data</div>
+</header>
+
+<div class="sticky-nav">
+  <div class="day-tabs" id="dayTabs"></div>
+  <div class="nav-actions">
+    <button class="settings-toggle preview-toggle" id="previewToggleBtn">📅 Your Day</button>
+    <button class="settings-toggle" id="settingsToggleBtn">⚙ Settings</button>
+  </div>
+</div>
+
+<div class="settings-backdrop" id="previewBackdrop"></div>
+
+<div class="settings-backdrop" id="settingsBackdrop"></div>
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-panel-head">
+    <span>Day settings</span>
+    <button class="settings-close" id="settingsCloseBtn">✕</button>
+  </div>
+  <div class="toolbar">
+    <div class="buffer-input" style="font-size:.85rem;">
+      <label for="globalBuffer">Default queue buffer before each show:</label>
+      <input type="number" id="globalBuffer" min="0" step="5" value="60"> min
+    </div>
+    <button class="btn-ghost" id="applyBufferBtn">Apply to all days</button>
+    <button class="btn-ghost" id="importBtn">Import saved configuration</button>
+    <input type="file" id="importFile" accept="application/json">
+    <button class="btn-ghost" id="exportBtn">Export configuration (.json)</button>
+    <button class="btn-primary" id="lockBtn">Lock in this day</button>
+    <button class="btn-ghost" id="resetBtn">Reset this day</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="main">
+
+    <div id="lockedBanner" style="display:none;" class="locked-banner"></div>
+    <div id="dayBody"></div>
+
+  </div>
+
+  <div class="side" id="sidePreview">
+    <div class="side-head">
+      <h2>Your Day</h2>
+      <button class="preview-close" id="previewCloseBtn">✕</button>
+    </div>
+    <div id="warnings"></div>
+    <div id="timeline" class="timeline"></div>
+    <div class="overview" id="overview"></div>
+  </div>
+</div>
+
+<footer>
+  Times for published days are exact, pulled from the schedule page's own underlying data (not estimated from the graphic).
+  Puy du Fou reserves the right to modify or cancel shows without notice; re-check the live page before you commit.
+  Puy du Fou only publishes each day's schedule ~2 days in advance — ask to have a day re-scraped and added once it's live.
+</footer>
+
+<script>
+// ---------- canonical attraction registry (id is stable across all days) ----------
+const ATTRACTIONS = {
+  signe:      {name:"Le Signe du Triomphe",         type:"show"},
+  vikings:    {name:"Les Vikings",                   type:"show"},
+  oiseaux:    {name:"Le Bal des Oiseaux Fantômes",   type:"show"},
+  lance:      {name:"Le Secret de la Lance",         type:"show"},
+  mousq:      {name:"Mousquetaire de Richelieu",     type:"show"},
+  panache:    {name:"Le Dernier Panache",            type:"show"},
+  mime:       {name:"Le Mime et L'Étoile",           type:"show"},
+  epee:       {name:"L'Épée du Roi Arthur",          type:"show"},
+  autom:      {name:"Les Automates Musiciens",       type:"show"},
+  carillon:   {name:"Le Grand Carillon",             type:"show"},
+  eaux:       {name:"Les Grandes Eaux",              type:"show"},
+  noces:      {name:"Les Noces de Feu (night finale)",type:"show"},
+  renaissance:{name:"La Renaissance du Château",     type:"experience", defaultDuration:40},
+  royaume:    {name:"Le Premier Royaume",            type:"experience", defaultDuration:45},
+  perouse:    {name:"Le Mystère de La Pérouse",      type:"experience", defaultDuration:35},
+  verdun:     {name:"Les Amoureux de Verdun",        type:"experience", defaultDuration:35},
+};
+
+// ---------- per-day schedules ----------
+// Exact minute-level times pulled from the page's own TimeScheduler.CachedScheduleResult data
+// (the source the site itself uses for its "Beginning/Ending" popup), not estimated.
+// A day with available:false hasn't been published by Puy du Fou yet (they release ~2 days ahead) —
+// ask to have it re-scraped once it's live and this file gets updated with its `times`.
+const DAYS = [
+  {
+    date:"2026-07-22", label:"Day 1 · Wed 22 Jul", available:true,
+    times:{
+      signe:      ["14:00-14:35","17:00-17:35"],
+      vikings:    ["11:30-11:56","13:00-13:26","16:15-16:41"],
+      oiseaux:    ["10:30-11:03","13:15-13:48","15:00-15:33"],
+      lance:      ["10:15-10:44","12:15-12:44","18:15-18:44"],
+      mousq:      ["11:00-11:32","14:45-15:17","16:00-16:32"],
+      panache:    ["11:15-11:49","14:15-14:49","15:30-16:04","17:30-18:04"],
+      mime:       ["09:45-10:13","11:00-11:28","12:15-12:43","15:00-15:28"],
+      epee:       ["10:45-11:07","11:45-12:07","15:30-15:52","18:30-18:52","19:30-19:52"],
+      autom:      ["09:45-09:52","12:00-12:07","15:00-15:07","17:30-17:37","19:00-19:07","20:00-20:07"],
+      carillon:   ["12:15-12:25","15:00-15:10","17:15-17:25","18:15-18:25","19:00-19:10"],
+      eaux:       ["10:00-10:08","13:00-13:08","14:00-14:08"],
+      noces:      ["22:15-22:45"],
+      renaissance:["09:30-12:00","15:30-17:45"],
+      royaume:    ["10:30-17:00"],
+      perouse:    ["12:00-20:45"],
+      verdun:     ["11:00-19:30"],
+    }
+  },
+  {
+    date:"2026-07-23", label:"Day 2 · Thu 23 Jul", available:true,
+    times:{
+      signe:      ["14:00-14:35","17:00-17:35"],
+      vikings:    ["11:30-11:56","13:00-13:26","16:15-16:41","18:30-18:56"],
+      oiseaux:    ["10:15-10:48","11:45-12:18","14:00-14:33","15:30-16:03"],
+      lance:      ["10:30-10:59","12:30-12:59","15:30-15:59"],
+      mousq:      ["10:45-11:17","12:00-12:32","16:00-16:32","17:15-17:47"],
+      panache:    ["11:00-11:34","12:15-12:49","15:15-15:49","16:30-17:04","18:15-18:49"],
+      mime:       ["09:45-10:13","11:00-11:28","12:15-12:43","15:00-15:28","18:00-18:28"],
+      epee:       ["10:15-10:37","11:15-11:37","13:15-13:37","14:15-14:37","16:15-16:37","19:00-19:22"],
+      autom:      ["09:45-09:52","12:30-12:37","14:30-14:37","15:30-15:37","17:30-17:37","18:45-18:52"],
+      carillon:   ["10:15-10:25","12:15-12:25","14:00-14:10","15:00-15:10","17:15-17:25","19:30-19:40"],
+      eaux:       ["11:00-11:08","12:00-12:08","14:00-14:08"],
+      noces:      ["22:15-22:45"],
+      renaissance:["09:30-12:00","14:30-16:45"],
+      royaume:    ["10:00-17:00"],
+      perouse:    ["12:00-20:45"],
+      verdun:     ["11:00-19:30"],
+    }
+  },
+  {
+    date:"2026-07-24", label:"Day 3 · Fri 24 Jul", available:true,
+    times:{
+      signe:      ["14:00-14:35","17:00-17:35"],
+      vikings:    ["11:30-11:56","13:00-13:26","16:15-16:41","18:30-18:56"],
+      oiseaux:    ["10:15-10:48","11:45-12:18","14:00-14:33","15:45-16:18"],
+      lance:      ["10:30-10:59","12:15-12:44","15:15-15:44","17:30-17:59"],
+      mousq:      ["10:30-11:02","11:45-12:17","15:30-16:02","16:45-17:17"],
+      panache:    ["09:45-10:19","11:00-11:34","12:15-12:49","15:15-15:49","16:30-17:04","18:15-18:49"],
+      mime:       ["10:00-10:28","11:15-11:43","12:30-12:58","15:00-15:28","16:15-16:43","19:00-19:28"],
+      epee:       ["10:00-10:22","11:00-11:22","13:15-13:37","14:15-14:37","17:30-17:52","18:30-18:52","19:30-19:52"],
+      autom:      ["09:45-09:52","12:30-12:37","14:30-14:37","15:30-15:37","18:00-18:07"],
+      carillon:   ["10:15-10:25","12:15-12:25","14:00-14:10","15:00-15:10","17:15-17:25","19:30-19:40"],
+      eaux:       ["11:00-11:08","12:00-12:08","14:00-14:08"],
+      // Les Noces de Feu (night finale) isn't scheduled this Friday — its row is absent from the site entirely.
+      renaissance:["09:30-12:00","14:30-16:45"],
+      royaume:    ["10:00-17:00"],
+      perouse:    ["12:00-20:15"],
+      verdun:     ["10:30-19:00"],
+    }
+  },
+];
+
+// ---------- state ----------
+const LS_KEY = "puydufou_planner_state_v2";
+let state = {
+  selections: {},  // date -> id -> {start,end,conflict, custom?, customStart?, duration?}
+  locked: {},      // date -> bool
+  buffers: {},     // id -> minutes, shared across days for the same attraction
+};
+DAYS.forEach(d => { state.selections[d.date] = {}; state.locked[d.date] = false; });
+Object.entries(ATTRACTIONS).forEach(([id,a]) => { state.buffers[id] = a.type==="experience" ? 0 : 60; });
+
+let activeDate = DAYS.find(d=>d.available) ? DAYS.find(d=>d.available).date : DAYS[0].date;
+
+function toMin(t){ const [h,m]=t.split(":").map(Number); return h*60+m; }
+function toStr(min){ min=((min%1440)+1440)%1440; const h=Math.floor(min/60), m=min%60; return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
+function nameOf(id){ return (ATTRACTIONS[id]||{}).name || id; }
+function dayOf(date){ return DAYS.find(d=>d.date===date); }
+
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      if(saved.selections) Object.assign(state.selections, saved.selections);
+      if(saved.locked) Object.assign(state.locked, saved.locked);
+      if(saved.buffers) Object.assign(state.buffers, saved.buffers);
+    }
+  }catch(e){}
+}
+function saveToStorage(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+// Find a pick of this attraction on any OTHER day (locked or just tentatively selected).
+function otherDayPick(id){
+  for(const day of DAYS){
+    if(day.date === activeDate) continue;
+    const sel = state.selections[day.date] && state.selections[day.date][id];
+    if(sel) return {date: day.date, label: day.label, start: sel.start, end: sel.end, locked: !!state.locked[day.date]};
+  }
+  return null;
+}
+function seenBadge(id){
+  const hit = otherDayPick(id);
+  if(!hit) return "";
+  const cls = hit.locked ? "badge-seen" : "badge-seen unlocked";
+  const tag = hit.locked ? "locked" : "planned";
+  return `<span class="badge ${cls}">${tag} ${hit.label} ${hit.start}</span>`;
+}
+
+function effectiveBlock(id, sel){
+  const buf = state.buffers[id] != null ? state.buffers[id] : 60;
+  return {startBuf: toMin(sel.start) - buf, end: toMin(sel.end), buf};
+}
+
+// Would picking start-end for id (on the ACTIVE day only) collide with anything else already
+// picked that same day? Different days never conflict with each other — only same-day overlap counts.
+function conflictsWithOthers(id, start, end){
+  const buf = state.buffers[id] != null ? state.buffers[id] : 60;
+  const startBuf = toMin(start) - buf;
+  const endMin = toMin(end);
+  const daySel = state.selections[activeDate];
+  const hits = [];
+  Object.keys(daySel).forEach(otherId => {
+    if(otherId === id) return;
+    const b = effectiveBlock(otherId, daySel[otherId]);
+    if(startBuf < b.end && b.startBuf < endMin){ hits.push({name: nameOf(otherId), start: daySel[otherId].start, end: daySel[otherId].end}); }
+  });
+  return hits;
+}
+function recomputeConflicts(){
+  const daySel = state.selections[activeDate];
+  const ids = Object.keys(daySel);
+  ids.forEach(id => daySel[id].conflict = false);
+  for(let i=0;i<ids.length;i++){
+    for(let j=i+1;j<ids.length;j++){
+      const a = effectiveBlock(ids[i], daySel[ids[i]]);
+      const b = effectiveBlock(ids[j], daySel[ids[j]]);
+      if(a.startBuf < b.end && b.startBuf < a.end){ daySel[ids[i]].conflict = true; daySel[ids[j]].conflict = true; }
+    }
+  }
+}
+
+// ---------- rendering ----------
+function render(){
+  renderTabs();
+  renderDayBody();
+  renderTimeline();
+  renderOverview();
+  renderLockButton();
+}
+
+function renderLockButton(){
+  const btn = document.getElementById("lockBtn");
+  const day = dayOf(activeDate);
+  if(!day.available){
+    btn.textContent = "Lock in this day";
+    btn.disabled = true;
+    btn.classList.add("btn-primary"); btn.classList.remove("btn-ghost");
+    return;
+  }
+  btn.disabled = false;
+  if(state.locked[activeDate]){
+    btn.textContent = "Unlock this day";
+    btn.classList.remove("btn-primary"); btn.classList.add("btn-ghost");
+  } else {
+    btn.textContent = "Lock in this day";
+    btn.classList.remove("btn-ghost"); btn.classList.add("btn-primary");
+  }
+}
+
+function renderTabs(){
+  const el = document.getElementById("dayTabs");
+  el.innerHTML = DAYS.map(d => {
+    const active = d.date===activeDate ? " active" : "";
+    const unavailable = !d.available ? " unavailable" : "";
+    const lockDot = state.locked[d.date] ? '<span class="lock-dot">🔒</span>' : "";
+    return `<button class="day-tab${active}${unavailable}" data-date="${d.date}">${d.label}${lockDot}</button>`;
+  }).join("");
+  el.querySelectorAll(".day-tab").forEach(btn => btn.addEventListener("click", e => {
+    const date = e.currentTarget.dataset.date;
+    const day = dayOf(date);
+    if(!day.available) return;
+    activeDate = date;
+    document.getElementById("lockedBanner").style.display = "none";
+    render();
+  }));
+}
+
+function renderDayBody(){
+  const container = document.getElementById("dayBody");
+  const day = dayOf(activeDate);
+  const locked = state.locked[activeDate];
+
+  if(!day.available){
+    container.innerHTML = `<div class="not-available">Schedule for ${day.label} isn't published yet.<br>
+      Puy du Fou releases each day's times about 2 days in advance — ask to have this day re-scraped once it's live, and it'll slot in here automatically.</div>`;
+    document.getElementById("lockedBanner").style.display = "none";
+    return;
+  }
+
+  const banner = document.getElementById("lockedBanner");
+  if(locked){
+    banner.style.display = "block";
+    banner.textContent = day.label + " is locked — it's just a safety lock against fat-fingering changes, not final. Hit \"Unlock this day\" any time to keep editing.";
+  } else {
+    banner.style.display = "none";
+  }
+
+  const showIds = Object.keys(day.times).filter(id => ATTRACTIONS[id].type === "show");
+  const expIds = Object.keys(day.times).filter(id => ATTRACTIONS[id].type === "experience");
+
+  const showsHtml = showIds.map(id => renderShowCard(day, id, locked)).join("");
+  const expHtml = expIds.map(id => renderExpCard(day, id, locked)).join("");
+
+  container.innerHTML = `
+    <h2 class="group">Shows — pick one time slot each</h2>
+    <div id="showsList">${showsHtml}</div>
+    <h2 class="group">Walk-in experiences — visit anytime in the window</h2>
+    <div id="expList">${expHtml}</div>
+  `;
+
+  container.querySelectorAll(".slot").forEach(btn => btn.addEventListener("click", onSlotClick));
+  container.querySelectorAll("[data-buf]").forEach(inp => inp.addEventListener("change", e => {
+    state.buffers[e.target.dataset.buf] = Number(e.target.value)||0;
+    recomputeConflicts(); render();
+  }));
+  container.querySelectorAll("[data-exp-toggle]").forEach(cb => cb.addEventListener("change", onExpToggle));
+  container.querySelectorAll("[data-exp-start]").forEach(inp => inp.addEventListener("change", onExpStart));
+  container.querySelectorAll("[data-exp-dur]").forEach(inp => inp.addEventListener("change", onExpDur));
+}
+
+function renderShowCard(day, id, locked){
+  const name = nameOf(id);
+  const buf = state.buffers[id];
+  const sel = state.selections[activeDate][id];
+  const slots = day.times[id].map(t => {
+    const [tStart,tEnd] = t.split("-");
+    const isSelected = sel && sel.start === tStart;
+    const conflict = isSelected && sel.conflict;
+    const blockers = isSelected ? [] : conflictsWithOthers(id, tStart, tEnd);
+    const unavailable = !isSelected && blockers.length>0;
+    const cls = "slot" + (isSelected?" selected":"") + (conflict?" conflict":"") + (unavailable?" unavailable":"");
+    const disabledAttr = (locked || unavailable) ? "disabled" : "";
+    const title = unavailable ? `title="Conflicts with ${blockers.map(b=>b.name+' '+b.start+'-'+b.end).join(', ')} (incl. queue buffer)"` : "";
+    return `<button class="${cls}" data-id="${id}" data-time="${t}" ${disabledAttr} ${title}>${t}</button>`;
+  }).join("");
+  const cardConflict = sel && sel.conflict;
+  return `<div class="card${cardConflict?" conflict":""}">
+    <div class="card-head">
+      <div class="name">${name} ${seenBadge(id)}</div>
+      <div class="buffer-input">
+        buffer <input type="number" min="0" step="5" value="${buf}" data-buf="${id}" ${locked?"disabled":""}> min
+      </div>
+    </div>
+    <div class="slots">${slots}</div>
+  </div>`;
+}
+
+function renderExpCard(day, id, locked){
+  const name = nameOf(id);
+  const info = ATTRACTIONS[id];
+  const sel = state.selections[activeDate][id];
+  const dur = sel ? (sel.duration!=null?sel.duration:info.defaultDuration) : info.defaultDuration;
+  const startVal = sel ? sel.customStart : "";
+  const windowsTxt = day.times[id].join(" and ");
+  const cardConflict = sel && sel.conflict;
+  return `<div class="card${cardConflict?" conflict":""}">
+    <div class="card-head">
+      <div class="name">${name} ${seenBadge(id)}<span class="badge badge-exp">walk-in</span></div>
+    </div>
+    <div class="note">Open windows: ${windowsTxt} — no fixed showtime, drop in whenever suits you.</div>
+    <div class="exp-window">
+      <label><input type="checkbox" data-exp-toggle="${id}" ${sel?"checked":""} ${locked?"disabled":""}> Plan a visit</label>
+      <label>at <input type="time" data-exp-start="${id}" value="${startVal || day.times[id][0].split("-")[0]}" ${locked||!sel?"disabled":""}></label>
+      <label>for <input type="number" min="10" step="5" value="${dur}" data-exp-dur="${id}" style="width:46px;" ${locked||!sel?"disabled":""}> min</label>
+    </div>
+  </div>`;
+}
+
+function onSlotClick(e){
+  if(state.locked[activeDate]) return;
+  const id = e.target.dataset.id;
+  const time = e.target.dataset.time;
+  const [start,end] = time.split("-");
+  const daySel = state.selections[activeDate];
+  if(daySel[id] && daySel[id].start === start){
+    delete daySel[id];
+  } else {
+    daySel[id] = {start, end};
+  }
+  recomputeConflicts();
+  render();
+}
+
+function onExpToggle(e){
+  const id = e.target.dataset.expToggle;
+  const day = dayOf(activeDate);
+  const info = ATTRACTIONS[id];
+  const daySel = state.selections[activeDate];
+  if(e.target.checked){
+    const start = day.times[id][0].split("-")[0];
+    daySel[id] = {custom:true, customStart:start, duration:info.defaultDuration, start, end: toStr(toMin(start)+info.defaultDuration)};
+  } else {
+    delete daySel[id];
+  }
+  recomputeConflicts(); render();
+}
+function onExpStart(e){
+  const id = e.target.dataset.expStart;
+  const daySel = state.selections[activeDate];
+  if(!daySel[id]) return;
+  daySel[id].customStart = e.target.value;
+  daySel[id].start = e.target.value;
+  daySel[id].end = toStr(toMin(e.target.value) + (daySel[id].duration||45));
+  recomputeConflicts(); render();
+}
+function onExpDur(e){
+  const id = e.target.dataset.expDur;
+  const daySel = state.selections[activeDate];
+  if(!daySel[id]) return;
+  daySel[id].duration = Number(e.target.value)||45;
+  daySel[id].end = toStr(toMin(daySel[id].start) + daySel[id].duration);
+  recomputeConflicts(); render();
+}
+
+function renderTimeline(){
+  const daySel = state.selections[activeDate];
+  const ids = Object.keys(daySel);
+  const warnEl = document.getElementById("warnings");
+  const conflictCount = ids.filter(id => daySel[id].conflict).length;
+  warnEl.innerHTML = conflictCount>0
+    ? `<div class="warn-banner">⚠ ${conflictCount} selection(s) overlap once queue time is included. Adjust times or buffers.</div>`
+    : "";
+
+  const tlEl = document.getElementById("timeline");
+  if(ids.length===0){ tlEl.innerHTML = '<div class="empty">Click show times or check off experiences to build this day.</div>'; return; }
+
+  const PX_PER_MIN = 1.3; // vertical scale of the agenda — bump up/down to zoom the day view
+
+  const items = ids.map(id => {
+    const sel = daySel[id];
+    const buf = state.buffers[id] != null ? state.buffers[id] : 60;
+    const type = ATTRACTIONS[id].type;
+    return {id, name: nameOf(id), start: sel.start, end: sel.end, buf, type, conflict: sel.conflict};
+  }).sort((a,b)=> (toMin(a.start)-a.buf) - (toMin(b.start)-b.buf));
+
+  const minStart = Math.min(...items.map(it => toMin(it.start) - it.buf));
+  const maxEnd   = Math.max(...items.map(it => toMin(it.end)));
+  const agendaStart = Math.floor(minStart/60)*60;
+  const agendaEnd   = Math.ceil(maxEnd/60)*60;
+  const topPx = min => (min-agendaStart)*PX_PER_MIN;
+
+  let blocksHtml = "";
+  for(let m=agendaStart; m<=agendaEnd; m+=60){
+    blocksHtml += `<div class="agenda-hour-rule" style="top:${topPx(m)}px;"></div>
+      <div class="agenda-hour-label" style="top:${topPx(m)}px;">${toStr(m)}</div>`;
+  }
+
+  let prevEnd = agendaStart;
+  items.forEach(it => {
+    const bufStart = toMin(it.start) - it.buf;
+    const showStart = toMin(it.start);
+    const showEnd = toMin(it.end);
+
+    const gap = bufStart - prevEnd;
+    if(gap >= 25){
+      blocksHtml += `<div class="agenda-gap-label" style="top:${topPx(prevEnd)}px; height:${gap*PX_PER_MIN}px;">${Math.round(gap/5)*5} min free</div>`;
+    }
+
+    const conflictCls = it.conflict ? " conflict" : "";
+    if(it.type === "show" && it.buf > 0){
+      blocksHtml += `<div class="agenda-block buffer${conflictCls}" style="top:${topPx(bufStart)}px; height:${(showStart-bufStart)*PX_PER_MIN}px;" title="Queue buffer for ${it.name}">Queue · ${it.buf} min</div>`;
+      blocksHtml += `<div class="agenda-block show${conflictCls}" style="top:${topPx(showStart)}px; height:${(showEnd-showStart)*PX_PER_MIN}px;" title="${it.name} ${it.start}-${it.end}">${it.name}<span class="agenda-time">${it.start}–${it.end}</span></div>`;
+    } else {
+      const cls = it.type === "experience" ? "experience" : "show";
+      blocksHtml += `<div class="agenda-block ${cls}${conflictCls}" style="top:${topPx(showStart)}px; height:${(showEnd-showStart)*PX_PER_MIN}px;" title="${it.name} ${it.start}-${it.end}">${it.name}<span class="agenda-time">${it.start}–${it.end}</span></div>`;
+    }
+    prevEnd = Math.max(prevEnd, showEnd);
+  });
+
+  const totalHeight = topPx(agendaEnd) + 24;
+  tlEl.innerHTML = `
+    <div class="agenda-legend">
+      <span><i style="background:var(--red);"></i>Show</span>
+      <span><i style="background:#2f5f78;"></i>Walk-in experience</span>
+      <span><i style="background:#f4e3c1; border:1px solid #ddb877;"></i>Queue buffer</span>
+    </div>
+    <div class="agenda-wrap" style="height:${totalHeight}px;">${blocksHtml}</div>
+  `;
+}
+
+function renderOverview(){
+  const el = document.getElementById("overview");
+  el.innerHTML = DAYS.map(d => {
+    const count = Object.keys(state.selections[d.date]||{}).length;
+    const lock = state.locked[d.date] ? " 🔒" : "";
+    const cls = d.date===activeDate ? " active" : "";
+    const status = d.available ? (count + " picked" + lock) : "not published yet";
+    return `<div class="day-row${cls}"><span>${d.label}</span><span>${status}</span></div>`;
+  }).join("");
+}
+
+// ---------- toolbar actions ----------
+// ---------- settings flyout ----------
+function setSettingsOpen(open){
+  document.getElementById("settingsPanel").classList.toggle("open", open);
+  document.getElementById("settingsBackdrop").classList.toggle("open", open);
+  document.getElementById("settingsToggleBtn").classList.toggle("open", open);
+}
+document.getElementById("settingsToggleBtn").addEventListener("click", () => {
+  const isOpen = document.getElementById("settingsPanel").classList.contains("open");
+  setSettingsOpen(!isOpen);
+});
+document.getElementById("settingsCloseBtn").addEventListener("click", () => setSettingsOpen(false));
+document.getElementById("settingsBackdrop").addEventListener("click", () => setSettingsOpen(false));
+
+// ---------- mobile "Your Day" preview sheet ----------
+// On desktop the .side column is always visible side-by-side; below the 900px breakpoint
+// it becomes a hidden slide-up sheet so the show list gets the full screen to pick from.
+function setPreviewOpen(open){
+  document.getElementById("sidePreview").classList.toggle("open", open);
+  document.getElementById("previewBackdrop").classList.toggle("open", open);
+  document.getElementById("previewToggleBtn").classList.toggle("open", open);
+}
+document.getElementById("previewToggleBtn").addEventListener("click", () => {
+  const isOpen = document.getElementById("sidePreview").classList.contains("open");
+  setPreviewOpen(!isOpen);
+});
+document.getElementById("previewCloseBtn").addEventListener("click", () => setPreviewOpen(false));
+document.getElementById("previewBackdrop").addEventListener("click", () => setPreviewOpen(false));
+
+document.getElementById("applyBufferBtn").addEventListener("click", () => {
+  const v = Number(document.getElementById("globalBuffer").value)||0;
+  Object.keys(ATTRACTIONS).forEach(id => { if(ATTRACTIONS[id].type==="show") state.buffers[id] = v; });
+  recomputeConflicts(); render();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if(!confirm("Clear all picks for " + dayOf(activeDate).label + "?")) return;
+  state.selections[activeDate] = {};
+  state.locked[activeDate] = false;
+  document.getElementById("lockedBanner").style.display="none";
+  render();
+});
+
+document.getElementById("lockBtn").addEventListener("click", () => {
+  // Lock is just a safety catch against accidental edits, not a final commitment — toggle it freely.
+  if(state.locked[activeDate]){
+    state.locked[activeDate] = false;
+    saveToStorage();
+    render();
+    return;
+  }
+  const daySel = state.selections[activeDate];
+  if(Object.keys(daySel).length===0){ alert("Select at least one show or experience first."); return; }
+  recomputeConflicts();
+  const hasConflict = Object.values(daySel).some(s=>s.conflict);
+  if(hasConflict && !confirm("You still have overlapping selections. Lock in anyway?")) return;
+  state.locked[activeDate] = true;
+  saveToStorage();
+  render();
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "puydufou-planner-config.json";
+  a.click();
+});
+
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const imported = JSON.parse(reader.result);
+      if(imported.selections) state.selections = imported.selections;
+      if(imported.locked) state.locked = imported.locked;
+      if(imported.buffers) state.buffers = imported.buffers;
+      DAYS.forEach(d => { if(!state.selections[d.date]) state.selections[d.date] = {}; if(!(d.date in state.locked)) state.locked[d.date] = false; });
+      saveToStorage();
+      render();
+      alert("Configuration imported.");
+    }catch(err){ alert("Couldn't read that file — expected a puydufou-planner-config.json export."); }
+  };
+  reader.readAsText(file);
+});
+
+// ---------- init ----------
+loadFromStorage();
+render();
+</script>
+</body>
+</html>
