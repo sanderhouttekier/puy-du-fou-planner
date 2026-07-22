@@ -151,6 +151,7 @@
     <button class="btn-ghost" id="applyBufferBtn">Apply to all days</button>
     <button class="btn-ghost" id="importBtn">Import saved configuration</button>
     <input type="file" id="importFile" accept="application/json">
+    <button class="btn-ghost" id="importOurConfigBtn">Load our-config.json</button>
     <button class="btn-ghost" id="exportBtn">Export configuration (.json)</button>
     <button class="btn-primary" id="lockBtn">Lock in this day</button>
     <button class="btn-ghost" id="resetBtn">Reset this day</button>
@@ -685,6 +686,15 @@ document.getElementById("exportBtn").addEventListener("click", () => {
   a.click();
 });
 
+function applyImportedConfig(imported){
+  if(imported.selections) state.selections = imported.selections;
+  if(imported.locked) state.locked = imported.locked;
+  if(imported.buffers) state.buffers = imported.buffers;
+  DAYS.forEach(d => { if(!state.selections[d.date]) state.selections[d.date] = {}; if(!(d.date in state.locked)) state.locked[d.date] = false; });
+  saveToStorage();
+  render();
+}
+
 document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
 document.getElementById("importFile").addEventListener("change", e => {
   const file = e.target.files[0];
@@ -692,17 +702,24 @@ document.getElementById("importFile").addEventListener("change", e => {
   const reader = new FileReader();
   reader.onload = () => {
     try{
-      const imported = JSON.parse(reader.result);
-      if(imported.selections) state.selections = imported.selections;
-      if(imported.locked) state.locked = imported.locked;
-      if(imported.buffers) state.buffers = imported.buffers;
-      DAYS.forEach(d => { if(!state.selections[d.date]) state.selections[d.date] = {}; if(!(d.date in state.locked)) state.locked[d.date] = false; });
-      saveToStorage();
-      render();
+      applyImportedConfig(JSON.parse(reader.result));
       alert("Configuration imported.");
     }catch(err){ alert("Couldn't read that file — expected a puydufou-planner-config.json export."); }
   };
   reader.readAsText(file);
+});
+
+// One-click load of our-config.json, sitting alongside index.html. Uses fetch() against a
+// relative path, so it only works when the page is served over http(s) (e.g. a local server) —
+// browsers block fetch() of local files when index.html is opened directly via file://.
+// If it fails, fall back to the manual "Import saved configuration" file picker above.
+document.getElementById("importOurConfigBtn").addEventListener("click", () => {
+  fetch("our-config.json")
+    .then(res => { if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+    .then(imported => { applyImportedConfig(imported); alert("our-config.json loaded."); })
+    .catch(err => {
+      alert("Couldn't load our-config.json (" + err.message + ").\nIf you opened this page directly as a file, browsers block that — serve it from a local server, or use \"Import saved configuration\" and pick the file manually instead.");
+    });
 });
 
 // ---------- init ----------

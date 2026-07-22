@@ -1,0 +1,110 @@
+{
+  "selections": {
+    "2026-07-22": {
+      "oiseaux": {
+        "start": "10:30",
+        "end": "11:03",
+        "conflict": false
+      },
+      "mousq": {
+        "start": "14:45",
+        "end": "15:17",
+        "conflict": false
+      },
+      "signe": {
+        "start": "17:00",
+        "end": "17:35",
+        "conflict": false
+      },
+      "mime": {
+        "start": "12:15",
+        "end": "12:43",
+        "conflict": false
+      },
+      "verdun": {
+        "custom": true,
+        "customStart": "13:00",
+        "duration": 25,
+        "start": "13:00",
+        "end": "13:25",
+        "conflict": false
+      }
+    },
+    "2026-07-23": {
+      "lance": {
+        "start": "15:30",
+        "end": "15:59",
+        "conflict": false
+      },
+      "vikings": {
+        "start": "18:30",
+        "end": "18:56",
+        "conflict": false
+      },
+      "noces": {
+        "start": "22:15",
+        "end": "22:45",
+        "conflict": false
+      },
+      "renaissance": {
+        "custom": true,
+        "customStart": "16:00",
+        "duration": 30,
+        "start": "16:00",
+        "end": "16:30",
+        "conflict": false
+      },
+      "perouse": {
+        "custom": true,
+        "customStart": "19:15",
+        "duration": 30,
+        "start": "19:15",
+        "end": "19:45",
+        "conflict": false
+      }
+    },
+    "2026-07-24": {
+      "panache": {
+        "start": "16:30",
+        "end": "17:04",
+        "conflict": false
+      },
+      "epee": {
+        "start": "19:30",
+        "end": "19:52",
+        "conflict": false
+      },
+      "royaume": {
+        "custom": true,
+        "customStart": "14:45",
+        "duration": 30,
+        "start": "14:45",
+        "end": "15:15",
+        "conflict": false
+      }
+    }
+  },
+  "locked": {
+    "2026-07-22": true,
+    "2026-07-23": true,
+    "2026-07-24": true
+  },
+  "buffers": {
+    "signe": 75,
+    "vikings": 75,
+    "oiseaux": 75,
+    "lance": 75,
+    "mousq": 75,
+    "panache": 75,
+    "mime": 70,
+    "epee": 75,
+    "autom": 75,
+    "carillon": 75,
+    "eaux": 75,
+    "noces": 75,
+    "renaissance": 0,
+    "royaume": 0,
+    "perouse": 0,
+    "verdun": 0
+  }
+}
